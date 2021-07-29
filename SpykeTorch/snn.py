@@ -4,9 +4,9 @@ import torch.nn.functional as fn
 from . import functional as sf
 from torch.nn.parameter import Parameter
 from .utils import to_pair
-
+print("jump")
 class Convolution(nn.Module):
-	r"""Performs a 2D convolution over an input spike-wave composed of several input
+	"""Performs a 2D convolution over an input spike-wave composed of several input
 	planes. Current version only supports stride of 1 with no padding.
 
 	The input is a 4D tensor with the size :math:`(T, C_{{in}}, H_{{in}}, W_{{in}})` and the crresponsing output
@@ -36,14 +36,14 @@ class Convolution(nn.Module):
 		weight_mean (float, optional): Mean of the initial random weights. Default: 0.8
 		weight_std (float, optional): Standard deviation of the initial random weights. Default: 0.02
 	"""
-	def __init__(self, in_channels, out_channels, kernel_size, weight_mean=0.8, weight_std=0.02):
+	def __init__(self, in_channels, out_channels, kernel_size, weight_mean=0.8, weight_std=0.02, one_d=True):
 		super(Convolution, self).__init__()
 		self.in_channels = in_channels
 		self.out_channels = out_channels
 		self.kernel_size = to_pair(kernel_size)
 		#self.weight_mean = weight_mean
 		#self.weight_std = weight_std
-
+		self.one_d = one_d
 		# For future use
 		self.stride = 1
 		self.bias = None
@@ -53,6 +53,7 @@ class Convolution(nn.Module):
 
 		# Parameters
 		self.weight = Parameter(torch.Tensor(self.out_channels, self.in_channels, *self.kernel_size))
+		print("W", torch.Tensor(self.out_channels, self.in_channels, *self.kernel_size).shape)
 		self.weight.requires_grad_(False) # We do not use gradients
 		self.reset_weight(weight_mean, weight_std)
 
@@ -74,7 +75,10 @@ class Convolution(nn.Module):
 		self.weight.copy_(target)	
 
 	def forward(self, input):
-		return fn.conv2d(input, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
+		if self.one_d:
+			return fn.conv1d(input, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
+		else:
+			return fn.conv2d(input, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
 
 class Pooling(nn.Module):
 	r"""Performs a 2D max-pooling over an input signal (spike-wave or potentials) composed of several input
@@ -101,7 +105,7 @@ class Pooling(nn.Module):
 		stride (int or tuple, optional): Stride of the pooling window. Default: None
 		padding (int or tuple, optional): Size of the padding. Default: 0
 	"""
-	def __init__(self, kernel_size, stride=None, padding=0):
+	def __init__(self, kernel_size, stride=None, padding=0, one_d=False):
 		super(Pooling, self).__init__()
 		self.kernel_size = to_pair(kernel_size)
 		if stride is None:
@@ -114,9 +118,10 @@ class Pooling(nn.Module):
 		self.dilation = 1
 		self.return_indices = False
 		self.ceil_mode = False
+		self.one_d = one_d
 
 	def forward(self, input):
-		return sf.pooling(input, self.kernel_size, self.stride, self.padding)
+		return sf.pooling(input, self.kernel_size, self.stride, self.padding, one_d=self.one_d)
 
 class STDP(nn.Module):
 	r"""Performs STDP learning rule over synapses of a convolutional layer based on the following formulation:

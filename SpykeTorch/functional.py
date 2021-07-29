@@ -20,7 +20,7 @@ def pad(input, pad, value=0):
 	return fn.pad(input, pad, value=value)
 
 # pooling
-def pooling(input, kernel_size, stride=None, padding=0):
+def pooling(input, kernel_size, stride=None, padding=0, one_d=True):
 	r"""Performs a 2D max-pooling over an input signal (spike-wave or potentials) composed of several input
 	planes.
 
@@ -33,6 +33,9 @@ def pooling(input, kernel_size, stride=None, padding=0):
 	Returns:
 		Tensor: The result of the max-pooling operation.
 	"""
+	if one_d:
+		return fn.max_pool1d(input, kernel_size, stride, padding)
+		
 	return fn.max_pool2d(input, kernel_size, stride, padding)
 
 def fire(potentials, threshold=None, return_thresholded_potentials=False):
