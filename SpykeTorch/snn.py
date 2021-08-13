@@ -4,7 +4,7 @@ import torch.nn.functional as fn
 from . import functional as sf
 from torch.nn.parameter import Parameter
 from .utils import to_pair
-print("jump")
+print("jumpy")
 class Convolution(nn.Module):
 	"""Performs a 2D convolution over an input spike-wave composed of several input
 	planes. Current version only supports stride of 1 with no padding.
@@ -40,7 +40,7 @@ class Convolution(nn.Module):
 		super(Convolution, self).__init__()
 		self.in_channels = in_channels
 		self.out_channels = out_channels
-		self.kernel_size = to_pair(kernel_size)
+		self.kernel_size = kernel_size
 		#self.weight_mean = weight_mean
 		#self.weight_std = weight_std
 		self.one_d = one_d
@@ -52,8 +52,10 @@ class Convolution(nn.Module):
 		self.padding = 0
 
 		# Parameters
-		self.weight = Parameter(torch.Tensor(self.out_channels, self.in_channels, *self.kernel_size))
-		print("W", torch.Tensor(self.out_channels, self.in_channels, *self.kernel_size).shape)
+		# TODO change weight for the 1D convolutional case
+		# if one_d .....
+		self.weight = Parameter(torch.Tensor(self.out_channels, self.in_channels, self.kernel_size))
+		# print("W", torch.Tensor(self.out_channels, self.in_channels, self.kernel_size).shape)
 		self.weight.requires_grad_(False) # We do not use gradients
 		self.reset_weight(weight_mean, weight_std)
 
@@ -107,13 +109,21 @@ class Pooling(nn.Module):
 	"""
 	def __init__(self, kernel_size, stride=None, padding=0, one_d=False):
 		super(Pooling, self).__init__()
-		self.kernel_size = to_pair(kernel_size)
+		if one_d:
+			self.kernel_size = kernel_size
+		else:
+			self.kernel_size = to_pair(kernel_size)
 		if stride is None:
 			self.stride = self.kernel_size
 		else:
-			self.stride = to_pair(stride)
-		self.padding = to_pair(padding)
-
+			if one_d:
+				self.stride = stride
+			else:
+				self.stride = to_pair(stride)
+		if one_d:
+			self.padding = padding
+		else:
+			self.padding = to_pair(padding)
 		# For future use
 		self.dilation = 1
 		self.return_indices = False
@@ -203,11 +213,12 @@ class STDP(nn.Module):
 		output_latencies = torch.sum(output_spikes, dim=0)
 		result = []
 		for winner in winners:
+			# print(winner)
 			# generating repeated output tensor with the same size of the receptive field
-			out_tensor = torch.ones(*self.conv_layer.kernel_size, device=output_latencies.device) * output_latencies[winner]
+			out_tensor = torch.ones(self.conv_layer.kernel_size, device=output_latencies.device) * output_latencies[winner]
 			# slicing input tensor with the same size of the receptive field centered around winner
 			# since there is no padding, there is no need to shift it to the center
-			in_tensor = input_latencies[:,winner[-2]:winner[-2]+self.conv_layer.kernel_size[-2],winner[-1]:winner[-1]+self.conv_layer.kernel_size[-1]]
+			in_tensor = input_latencies[:,winner[-2]:winner[-2]+self.conv_layer.kernel_size]
 			result.append(torch.ge(in_tensor,out_tensor))
 		return result
 

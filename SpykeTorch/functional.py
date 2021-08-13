@@ -192,7 +192,7 @@ def get_k_winners(potentials, kwta = 1, inhibition_radius = 0, spikes = None):
 			# adding to the winners list
 			winners.append(max_idx_unraveled)
 			# preventing the same feature to be the next winner
-			total[max_idx_unraveled[0],:,:] = 0
+			total[max_idx_unraveled[0],:] = 0
 			# columnar inhibition (increasing the chance of leanring diverse features)
 			if inhibition_radius != 0:
 				rowMin,rowMax = max(0,max_idx_unraveled[-2]-inhibition_radius),min(total.size(-2),max_idx_unraveled[-2]+inhibition_radius+1)
